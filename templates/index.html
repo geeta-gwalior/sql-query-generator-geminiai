@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Data Retriever</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <!-- Include Plotly.js -->
+
+    <script>
+        async function askQuestion(event) {
+            event.preventDefault();  // Prevent form from refreshing the page
+
+            const question = document.getElementById('question').value;
+
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'question': question
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Display the SQL query
+                document.getElementById('query').innerText = "Generated SQL Query: " + data.query;
+                
+                // Display the retrieved data in a table format
+                let resultHTML = "<h3>Retrieved Data:</h3>";
+                if (data.data.length > 0) {
+                    resultHTML += "<table border='1'><thead><tr>";
+                    
+                    // Create table headers dynamically
+                    data.columns.forEach(column => {
+                        resultHTML += `<th>${column}</th>`;
+                    });
+                    
+                    resultHTML += "</tr></thead><tbody>";
+                    
+                    // Create table rows dynamically
+                    data.data.forEach(row => {
+                        resultHTML += "<tr>";
+                        data.columns.forEach(column => {
+                            resultHTML += `<td>${row[column]}</td>`;
+                        });
+                        resultHTML += "</tr>";
+                    });
+                    
+                    resultHTML += "</tbody></table>";
+                } else {
+                    resultHTML += "<p>No data found</p>";
+                }
+
+                document.getElementById('response').innerHTML = resultHTML;
+
+                // Plot the graph if one exists
+                if (data.graph) {
+                    const graph = JSON.parse(data.graph);
+                    Plotly.newPlot('graph', graph.data, graph.layout);
+                } else {
+                    document.getElementById('graph').innerHTML = "<p>No graph available for this query</p>";
+                }
+            } else {
+                document.getElementById('query').innerText = "Error: " + (data.error || data.message);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Sales Data App</h1>
+    <form onsubmit="askQuestion(event)">
+        <label for="question">Input your question:</label>
+        <input type="text" id="question" name="question" required>
+        <button type="submit">Ask the Question</button>
+    </form>
+
+    <div id="query"></div>
+    <div id="response"></div>
+    <div id="graph"></div> <!-- Div to display the graph -->
+</body>
+</html>
